@@ -28,6 +28,9 @@ ap.add_argument("--noaux", action="store_true")
 ap.add_argument("--nopre", action="store_true")
 ap.add_argument("--tta", type=int, default=4)
 ap.add_argument("--photo", type=float, default=0.06)
+ap.add_argument("--lrtm", type=float, default=0.25)
+ap.add_argument("--hidden", type=int, default=192)
+ap.add_argument("--bins", type=int, default=12)
 ap.add_argument("--w", default="")           # e.g. "w_rank=1.5,w_reg=0.0"
 a = ap.parse_args()
 os.makedirs(a.out, exist_ok=True)
@@ -67,7 +70,8 @@ groups = np.load(os.path.join(a.out, "groups.npy"))
 
 cfg = dict(DEFAULT_CFG)
 cfg.update(epochs=a.epochs, backbone=a.backbone, seed=a.seed, drop=a.drop, lr=a.lr,
-           bs=a.bs, tta=a.tta, photo=a.photo, aux=not a.noaux, pretrained=not a.nopre)
+           bs=a.bs, tta=a.tta, photo=a.photo, aux=not a.noaux, pretrained=not a.nopre,
+           lr_trunk_mult=a.lrtm, hidden=a.hidden, n_bins=a.bins)
 for kv in filter(None, a.w.split(",")):
     k, v = kv.split("="); cfg[k] = float(v)
 print(f"[{a.tag}] cfg={cfg}", flush=True)

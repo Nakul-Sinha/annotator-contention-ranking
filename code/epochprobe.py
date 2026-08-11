@@ -104,8 +104,8 @@ for fi, (tr_i, va_i) in enumerate(GroupKFold(n_splits=a.folds).split(np.arange(l
             for k in READOUT_KEYS:
                 OOF[ep + 1][k][va_i] = va[k]; TEP[ep + 1][k] += tt[k]
             model.load_state_dict(live)
-            print(f"  fold {fi} @ep{ep+1}: exp {score(va['exp'], y[va_i]):.4f} "
-                  f"tail9 {score(va['tail9'], y[va_i]):.4f} ({time.time()-t0:.0f}s)", flush=True)
+            print(f"  fold {fi} @ep{ep+1}: exp {score(va['cnn_exp'], y[va_i]):.4f} "
+                  f"tail9 {score(va['cnn_tail9'], y[va_i]):.4f} ({time.time()-t0:.0f}s)", flush=True)
     print(f" fold {fi} total {time.time()-t0:.0f}s", flush=True)
 
 print("\n=== epoch response (full subject-grouped OOF) ===", flush=True)

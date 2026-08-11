@@ -106,6 +106,25 @@ def _knn(k, use_emb):
     return f
 
 
+def _emb_ridge(alpha, target):
+    def f(tr_i, va_i):
+        m = Ridge(alpha=alpha).fit(E[tr_i], target[tr_i])
+        return m.predict(E[va_i] if va_i is not None else Ete)
+    return f
+
+
+def _emb_gbm(target, ncomp=48):
+    from sklearn.decomposition import PCA
+
+    def f(tr_i, va_i):
+        pca = PCA(n_components=ncomp, random_state=0).fit(E[tr_i])
+        m = HistGradientBoostingRegressor(max_depth=3, max_iter=200, learning_rate=.05,
+                                          l2_regularization=1.0, random_state=0)
+        m.fit(pca.transform(E[tr_i]), target[tr_i])
+        return m.predict(pca.transform(E[va_i] if va_i is not None else Ete))
+    return f
+
+
 print("=== non-convolutional candidates (subject-grouped OOF) ===", flush=True)
 run("h_ridge", _ridge(20.0, y))
 run("h_ridge_rk", _ridge(20.0, yr))
@@ -115,7 +134,11 @@ run("h_gbm_rk", _gbm(yr))
 run("h_gbmtop", _gbm_top)
 run("h_knn16", _knn(16, True))
 run("h_knn48", _knn(48, True))
+run("h_knn6", _knn(6, True))
 run("h_knnf32", _knn(32, False))
+run("h_eridge", _emb_ridge(30.0, y))
+run("h_eridge_rk", _emb_ridge(30.0, yr))
+run("h_egbm", _emb_gbm(yr))
 
 np.savez(os.path.join(a.out, "oof_hand.npz"),
          **{f"oof_{k}": v for k, v in CANDS.items()},
