@@ -1,0 +1,8 @@
+dataset/
+out/
+logs/
+*.npy
+*.npz
+__pycache__/
+*.png
+working/
