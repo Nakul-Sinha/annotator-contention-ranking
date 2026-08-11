@@ -1,4 +1,4 @@
-# The Split Verdict — contention-capture triage on rodent-face imagery
+# Annotator Disagreement Ranking: technical notes
 
 Rank ~173 held-out mouse-face crops by how far an expert panel's independent 0/1/2 marks
 scatter. Only the **ordering** of `priority` is scored.
@@ -25,13 +25,13 @@ almost one-for-one.
 | contention | mean 0.1270, sd 0.0886, max 0.5333, 8.8 % exact zeros, skew +1.18 |
 
 The label is a **small-sample statistic**: denominators of the exact values divide 5·k² for
-k ≈ 3–5 assessors, so realized scatter carries roughly 35 % relative sampling noise. That
-dictates the estimator design — a shrinking L1/L2 head is the wrong tool for a spread target.
+k ≈ 3 to 5 assessors, so realized scatter carries roughly 35 % relative sampling noise. That
+dictates the estimator design, a shrinking L1/L2 head is the wrong tool for a spread target.
 
 ## Validation design
 
 No subject column is provided and the ids are verified random (602 distinct `fc-<n>` prefixes
-across 982 train rows, 109 of them shared with test — the prefix is **not** an animal id).
+across 982 train rows, 109 of them shared with test, the prefix is **not** an animal id).
 Subject groups are recovered by Ward clustering of generic ResNet-18 embeddings of the
 training images (k = 141):
 
@@ -64,14 +64,14 @@ framing), not animal identity. Test faces have comparable neighbour geometry to 
 ## Approach
 
 Many weak, decorrelated ranking signals, greedy-blended on subject-grouped OOF **by the actual
-competition metric** — never one "best" estimator.
+competition metric**, never one "best" estimator.
 
 * **Convolutional core** (fine-tuned ImageNet backbone, one trunk, five heads)
   * soft-binned categorical head over quantile bins of contention → `E[y]`, `E[y²]`,
     law-of-total-variance spread, entropy, upper-tail mass, predicted quantiles, CVaR
   * scalar regression head and a heteroscedastic scale head
   * a structured **five-region rubric head**: per region a distribution over marks {0,1,2},
-    whose implied variance is averaged and supervised against the label — this supervises the
+    whose implied variance is averaged and supervised against the label, this supervises the
     quantity the target is built from, and its inductive bias matches the fact that scatter
     peaks for intermediate/ambiguous grades
   * a top-quartile classifier, because facet C weights the head of the queue heavily
@@ -81,7 +81,7 @@ competition metric** — never one "best" estimator.
   energy centroid, mirror asymmetry (pose), flat-block occlusion proxies. Fed both as extra
   model inputs and as standalone blend candidates.
 * **Small non-convolutional regressors** on those descriptors and on generic embeddings,
-  fitted on the same folds — weak blend members by design, never load-bearing alone.
+  fitted on the same folds, weak blend members by design, never load-bearing alone.
 
 Augmentation is geometry-only (flip, ±12° rotation, ±8 % scale, ±5 % translate) plus mild
 brightness/contrast. Blur, rescale and noise are deliberately excluded: they destroy the
