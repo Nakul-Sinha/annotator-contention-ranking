@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metric import score
 from subjects import cluster_subjects, descriptors
 
-DATA = sys.argv[1] if len(sys.argv) > 1 else r"G:\Datacurve\Latest_Chals\The Split Verdict Forecasting Asse\dataset"
+DATA = sys.argv[1] if len(sys.argv) > 1 else r"G:\ml\Latest_Chals\The Split Verdict Forecasting Asse\dataset"
 tr = pd.read_csv(os.path.join(DATA, "train.csv"))
 te = pd.read_csv(os.path.join(DATA, "test.csv"))
 img = lambda i: os.path.join(DATA, "images", i + ".jpg")

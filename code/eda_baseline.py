@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from metric import score, capture_C
 from feats import feature_matrix
 
-DATA = sys.argv[1] if len(sys.argv) > 1 else r"G:\Datacurve\Latest_Chals\The Split Verdict Forecasting Asse\dataset"
+DATA = sys.argv[1] if len(sys.argv) > 1 else r"G:\ml\Latest_Chals\The Split Verdict Forecasting Asse\dataset"
 OUT = sys.argv[2] if len(sys.argv) > 2 else "."
 
 tr = pd.read_csv(os.path.join(DATA, "train.csv"))

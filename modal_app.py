@@ -6,7 +6,7 @@ import os
 import modal
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA = r"G:\Datacurve\Latest_Chals\The Split Verdict Forecasting Asse\dataset"
+DATA = r"G:\ml\Latest_Chals\The Split Verdict Forecasting Asse\dataset"
 
 image = (
     modal.Image.debian_slim(python_version="3.11")
