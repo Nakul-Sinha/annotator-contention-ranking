@@ -125,6 +125,40 @@ def _emb_gbm(target, ncomp=48):
     return f
 
 
+def _novelty(k, space):
+    """Atypicality of a face relative to the training population -- the description names
+    'an exposure unlike the rest' as a driver of disagreement. Unsupervised: uses no labels."""
+    F = E if space == "emb" else (Ztr / (np.linalg.norm(Ztr, axis=1, keepdims=True) + 1e-8))
+    G = Ete if space == "emb" else (Zte / (np.linalg.norm(Zte, axis=1, keepdims=True) + 1e-8))
+
+    def f(tr_i, va_i):
+        Q = F[va_i] if va_i is not None else G
+        S = Q @ F[tr_i].T
+        return -np.sort(S, axis=1)[:, -k:].mean(1)
+    return f
+
+
+def _maha(ncomp):
+    from sklearn.decomposition import PCA
+
+    def f(tr_i, va_i):
+        p = PCA(n_components=ncomp, whiten=True, random_state=0).fit(E[tr_i])
+        Q = p.transform(E[va_i] if va_i is not None else Ete)
+        return (Q ** 2).sum(1)
+    return f
+
+
+def _lof(k, space):
+    from sklearn.neighbors import LocalOutlierFactor
+    F = E if space == "emb" else Ztr
+    G = Ete if space == "emb" else Zte
+
+    def f(tr_i, va_i):
+        m = LocalOutlierFactor(n_neighbors=k, novelty=True).fit(F[tr_i])
+        return -m.score_samples(F[va_i] if va_i is not None else G)
+    return f
+
+
 print("=== non-convolutional candidates (subject-grouped OOF) ===", flush=True)
 run("h_ridge", _ridge(20.0, y))
 run("h_ridge_rk", _ridge(20.0, yr))
@@ -139,6 +173,12 @@ run("h_knnf32", _knn(32, False))
 run("h_eridge", _emb_ridge(30.0, y))
 run("h_eridge_rk", _emb_ridge(30.0, yr))
 run("h_egbm", _emb_gbm(yr))
+run("h_nov8", _novelty(8, "emb"))
+run("h_nov32", _novelty(32, "emb"))
+run("h_novf16", _novelty(16, "feat"))
+run("h_maha24", _maha(24))
+run("h_lof20", _lof(20, "emb"))
+run("h_loff20", _lof(20, "feat"))
 
 np.savez(os.path.join(a.out, "oof_hand.npz"),
          **{f"oof_{k}": v for k, v in CANDS.items()},

@@ -74,9 +74,10 @@ cfg.update(epochs=a.epochs, backbone=a.backbone, seed=a.seed, drop=a.drop, lr=a.
            lr_trunk_mult=a.lrtm, hidden=a.hidden, n_bins=a.bins)
 for kv in filter(None, a.w.split(",")):
     k, v = kv.split("="); cfg[k] = float(v)
-print(f"[{a.tag}] cfg={cfg}", flush=True)
+dev = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"[{a.tag}] device={dev} cfg={cfg}", flush=True)
 
-oof, tep, nf = run_cv(Itr, y, Atr, groups, Ite, Ate, cfg, n_splits=a.folds)
+oof, tep, nf = run_cv(Itr, y, Atr, groups, Ite, Ate, cfg, n_splits=a.folds, device=dev)
 
 print(f"\n[{a.tag}] per-readout OOF:", flush=True)
 solo = {}

@@ -120,6 +120,26 @@ def image_features(a):
     bm = blk2.mean(axis=(1, 3))
     f["tile_mean_std"] = float(bm.std())
     f["tile_sharp_std"] = float(np.log1p(blk2.std(axis=(1, 3))).std())
+
+    # --- head-turn / partial-blur proxies ---------------------------------------
+    # left-right and top-bottom edge-energy imbalance: a face turned away loads one side
+    eL, eR = e[:, :e.shape[1] // 2].mean(), e[:, e.shape[1] // 2:].mean()
+    eT, eB = e[:e.shape[0] // 2].mean(), e[e.shape[0] // 2:].mean()
+    f["lr_imbal"] = float(abs(np.log((eL + 1e-6) / (eR + 1e-6))))
+    f["tb_imbal"] = float(abs(np.log((eT + 1e-6) / (eB + 1e-6))))
+    # partial blur: spread of per-tile sharpness (some of the face sharp, some smeared)
+    Hl, Wl = lap.shape
+    th, tw = (Hl // 16) * 16, (Wl // 16) * 16
+    ts = np.log1p(np.var(lap[:th, :tw].reshape(th // 16, 16, tw // 16, 16), axis=(1, 3)))
+    f["tile_lap_std"] = float(ts.std())
+    f["tile_lap_rng"] = float(np.percentile(ts, 90) - np.percentile(ts, 10))
+    # bimodality of the intensity histogram (subject vs background separation)
+    f["hist_bimod"] = float((f["skew"] ** 2 + 1) / (f["kurt"] + 1e-6))
+    # colour-channel disagreement in sharpness (chromatic smear from motion)
+    lc = [float(np.var((-4 * a[..., c] + np.roll(a[..., c], 1, 0) + np.roll(a[..., c], -1, 0)
+                        + np.roll(a[..., c], 1, 1) + np.roll(a[..., c], -1, 1))[1:-1, 1:-1]))
+          for c in range(3)]
+    f["chan_sharp_std"] = float(np.std(np.log(np.array(lc) + 1e-9)))
     return f
 
 

@@ -185,6 +185,21 @@ def image_features(a):
     blk2 = g[:H // bs * bs, :W // bs * bs].reshape(H // bs, bs, W // bs, bs)
     f["tile_mean_std"] = float(blk2.mean(axis=(1, 3)).std())
     f["tile_sharp_std"] = float(np.log1p(blk2.std(axis=(1, 3))).std())
+    # head-turn / partial-blur proxies
+    eL, eR = e[:, :e.shape[1] // 2].mean(), e[:, e.shape[1] // 2:].mean()
+    eT, eB = e[:e.shape[0] // 2].mean(), e[e.shape[0] // 2:].mean()
+    f["lr_imbal"] = float(abs(np.log((eL + 1e-6) / (eR + 1e-6))))
+    f["tb_imbal"] = float(abs(np.log((eT + 1e-6) / (eB + 1e-6))))
+    Hl, Wl = lap.shape
+    th, tw = (Hl // 16) * 16, (Wl // 16) * 16
+    ts = np.log1p(np.var(lap[:th, :tw].reshape(th // 16, 16, tw // 16, 16), axis=(1, 3)))
+    f["tile_lap_std"] = float(ts.std())
+    f["tile_lap_rng"] = float(np.percentile(ts, 90) - np.percentile(ts, 10))
+    f["hist_bimod"] = float((f["skew"] ** 2 + 1) / (f["kurt"] + 1e-6))
+    lc = [float(np.var((-4 * a[..., c] + np.roll(a[..., c], 1, 0) + np.roll(a[..., c], -1, 0)
+                        + np.roll(a[..., c], 1, 1) + np.roll(a[..., c], -1, 1))[1:-1, 1:-1]))
+          for c in range(3)]
+    f["chan_sharp_std"] = float(np.std(np.log(np.array(lc) + 1e-9)))
     return f
 
 
@@ -727,14 +742,53 @@ def add_tabular_candidates(cands, tcands, Xtr, Xte, Etr, Ete, y, folds):
             return (w * y[a][idx]).sum(1) / w.sum(1)
         return f
 
+    def emb_ridge(alpha, tgt):
+        return lambda a, b: Ridge(alpha=alpha).fit(Etr[a], tgt[a]).predict(
+            Etr[b] if b is not None else Ete)
+
+    def novelty(k, emb=True):
+        """Atypicality relative to the training population -- the brief names 'an exposure
+        unlike the rest' as a driver of disagreement. Uses no labels."""
+        F = Etr if emb else Z / (np.linalg.norm(Z, axis=1, keepdims=True) + 1e-8)
+        G = Ete if emb else Zt / (np.linalg.norm(Zt, axis=1, keepdims=True) + 1e-8)
+
+        def f(a, b):
+            Q = F[b] if b is not None else G
+            return -np.sort(Q @ F[a].T, axis=1)[:, -k:].mean(1)
+        return f
+
+    def maha(ncomp=24):
+        from sklearn.decomposition import PCA
+
+        def f(a, b):
+            p = PCA(n_components=min(ncomp, len(a) - 1), whiten=True, random_state=0).fit(Etr[a])
+            return (p.transform(Etr[b] if b is not None else Ete) ** 2).sum(1)
+        return f
+
+    def lof(k=20):
+        from sklearn.neighbors import LocalOutlierFactor
+
+        def f(a, b):
+            m = LocalOutlierFactor(n_neighbors=k, novelty=True).fit(Etr[a])
+            return -m.score_samples(Etr[b] if b is not None else Ete)
+        return f
+
     run("t_ridge", ridge(20.0, y))
     run("t_ridge_rk", ridge(20.0, yr))
     run("t_ridge_a2", ridge(200.0, yr))
     run("t_gbm", gbm(y))
     run("t_gbm_rk", gbm(yr))
     run("t_gbmtop", gbmtop)
+    run("t_knn6", knn(6))
     run("t_knn16", knn(16))
     run("t_knn48", knn(48))
+    run("t_eridge", emb_ridge(30.0, y))
+    run("t_eridge_rk", emb_ridge(30.0, yr))
+    run("t_nov8", novelty(8))
+    run("t_nov32", novelty(32))
+    run("t_novf16", novelty(16, emb=False))
+    run("t_maha24", maha(24))
+    run("t_lof20", lof(20))
 
 
 BASE_CFG = dict(backbone="resnet18", pretrained=True, n_bins=12, drop=0.30, hidden=192,
